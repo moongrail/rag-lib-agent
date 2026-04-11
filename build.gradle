@@ -1,0 +1,104 @@
+plugins {
+    id 'java'
+    id 'jacoco'
+    id 'org.springframework.boot' version '3.4.5'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.ragassistant'
+version = '0.1.0'
+description = 'Enterprise RAG Research Assistant Bot (Java, Spring Boot, LangChain4j, OpenRouter, PostgreSQL/pgvector)'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    langchain4jVersion = '1.17.2'
+    langchain4jBetaVersion = '1.17.2-beta27'
+    telegrambotsVersion = '6.9.7.1'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "dev.langchain4j:langchain4j-bom:${langchain4jVersion}"
+    }
+}
+
+dependencies {
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+
+    // Flyway
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // PostgreSQL
+    implementation 'org.postgresql:postgresql'
+
+    // Observability
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+    implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+
+    // LangChain4j core + Spring integration
+    implementation 'dev.langchain4j:langchain4j'
+    implementation 'dev.langchain4j:langchain4j-spring-boot-starter'
+
+    // LLM provider (OpenRouter is OpenAI-compatible)
+    implementation 'dev.langchain4j:langchain4j-open-ai'
+
+    // Embedding providers
+    implementation 'dev.langchain4j:langchain4j-ollama'
+    implementation 'dev.langchain4j:langchain4j-hugging-face'
+    implementation 'dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2-q'
+
+    // Vector store
+    implementation 'dev.langchain4j:langchain4j-pgvector'
+
+    // Document parsers (beta module line, pinned explicitly)
+    implementation "dev.langchain4j:langchain4j-document-parser-apache-pdfbox:${langchain4jBetaVersion}"
+    implementation "dev.langchain4j:langchain4j-document-parser-apache-tika:${langchain4jBetaVersion}"
+
+    // Telegram adapter (core library, registered manually)
+    implementation "org.telegram:telegrambots:${telegrambotsVersion}"
+
+    // OpenAPI / Swagger UI
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2-q'
+
+    // API docs (Swagger UI / OpenAPI)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+bootJar {
+    archiveFileName = 'rag-assistant.jar'
+}
