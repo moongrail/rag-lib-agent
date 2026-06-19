@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>RAG Assistant</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 0; background: #f5f5f7; }
+        header { background: #1f2937; color: #fff; padding: 12px 20px; }
+        .wrap { max-width: 820px; margin: 20px auto; padding: 0 16px; }
+        #messages { display: flex; flex-direction: column; gap: 10px; }
+        .msg { padding: 10px 14px; border-radius: 10px; white-space: pre-wrap; }
+        .user { background: #2563eb; color: #fff; align-self: flex-end; }
+        .bot { background: #fff; border: 1px solid #e5e7eb; }
+        .cite { font-size: 12px; color: #6b7280; margin-top: 6px; }
+        form { display: flex; gap: 8px; margin-top: 16px; }
+        input[type=text] { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
+        button { padding: 10px 18px; border: 0; border-radius: 8px; background: #1f2937; color: #fff; }
+        .upload { margin-bottom: 16px; padding: 12px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; }
+    </style>
+</head>
+<body>
+<header>RAG Research Assistant</header>
+<div class="wrap">
+    <div class="upload">
+        <form id="uploadForm">
+            <input type="file" id="files" name="files" multiple accept=".pdf,.docx,.txt,.md,.xml"/>
+            <button type="button" id="uploadBtn">Upload</button>
+            <span id="uploadStatus"></span>
+        </form>
+    </div>
+    <div id="messages"></div>
+    <form id="chatForm">
+        <input type="text" id="question" placeholder="Ask a question about your documents..."/>
+        <button type="submit">Send</button>
+    </form>
+</div>
+<script>
+    const messages = document.getElementById('messages');
+    function addMsg(cls, text, cites) {
+        const d = document.createElement('div');
+        d.className = 'msg ' + cls;
+        d.textContent = text;
+        if (cites && cites.length) {
+            const c = document.createElement('div');
+            c.className = 'cite';
+            c.textContent = 'Sources: ' + cites.map(x => x.fileName + (x.page != null ? ' (p.' + x.page + ')' : '')).join(', ');
+            d.appendChild(c);
+        }
+        messages.appendChild(d);
+        messages.scrollTop = messages.scrollHeight;
+    }
+    document.getElementById('chatForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const q = document.getElementById('question').value.trim();
+        if (!q) return;
+        addMsg('user', q);
+        document.getElementById('question').value = '';
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: q})
+        });
+        const data = await res.json();
+        addMsg('bot', data.answer || data.error, data.citations);
+    });
+
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+        const input = document.getElementById('files');
+        if (!input.files.length) return;
+        const fd = new FormData();
+        for (const f of input.files) fd.append('files', f);
+        const status = document.getElementById('uploadStatus');
+        status.textContent = 'Uploading ' + input.files.length + ' file(s)...';
+        const res = await fetch('/api/documents/bulk', { method: 'POST', body: fd });
+        const data = await res.json();
+        const ok = data.filter(d => d.status === 'INGESTED').length;
+        status.textContent = ok + '/' + data.length + ' ingested, ' + (data.length - ok) + ' failed';
+    });
+</script>
+</body>
+</html>
