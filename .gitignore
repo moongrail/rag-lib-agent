@@ -9,8 +9,15 @@ out/
 *.log
 *.err
 /data/
+data/
 .env
+.env.*
+!.env.example
 application-local.yml
 dev/
 session-ses_*.md
 *.class
+*.orig
+*.rej
+.DS_Store
+Thumbs.db
