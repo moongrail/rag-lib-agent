@@ -26,10 +26,11 @@ public class TenantFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         String headerName = appProperties.getTenant().getHeaderName();
-        String tenant = request.getHeader(headerName);
-        if (tenant == null || tenant.isBlank()) {
-            tenant = appProperties.getTenant().getDefaultTenant();
+        String raw = request.getHeader(headerName);
+        if (raw == null || raw.isBlank()) {
+            raw = appProperties.getTenant().getDefaultTenant();
         }
+        String tenant = TenantIds.sanitize(raw, appProperties.getTenant().getDefaultTenant());
         TenantContext.set(tenant);
         MDC.put("tenant", tenant);
         try {
