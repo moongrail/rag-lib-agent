@@ -1,5 +1,6 @@
 package com.ragassistant.storage;
 
+import com.ragassistant.common.TenantIds;
 import com.ragassistant.common.exceptions.RagException;
 import com.ragassistant.config.AppProperties;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,12 @@ public class DocumentStorageService {
 
     public String store(String tenantId, String originalFileName, InputStream content) {
         try {
-            Path tenantDir = Path.of(rootPath, tenantId).toAbsolutePath();
+            String safeTenant = TenantIds.sanitize(tenantId);
+            Path tenantDir = Path.of(rootPath, safeTenant).toAbsolutePath().normalize();
+            Path root = Path.of(rootPath).toAbsolutePath().normalize();
+            if (!tenantDir.startsWith(root)) {
+                throw new RagException("Invalid tenant id");
+            }
             Files.createDirectories(tenantDir);
             String safeName = originalFileName.replaceAll("[^a-zA-Z0-9._-]", "_");
             Path target = tenantDir.resolve(UUID.randomUUID() + "_" + safeName);
