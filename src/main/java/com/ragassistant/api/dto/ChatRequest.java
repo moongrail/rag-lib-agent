@@ -1,4 +1,12 @@
 package com.ragassistant.api.dto;
 
-public record ChatRequest(String message, String sessionId) {
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record ChatRequest(
+        @NotBlank(message = "message must not be blank")
+        @Size(max = 4000, message = "message must be at most 4000 characters")
+        String message,
+        @Size(max = 128, message = "sessionId must be at most 128 characters")
+        String sessionId) {
 }
