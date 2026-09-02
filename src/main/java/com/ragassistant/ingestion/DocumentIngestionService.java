@@ -130,45 +130,53 @@ public class DocumentIngestionService {
 
     private DocumentMetadata ingestInternal(InputStream content, String fileName, String contentType,
                                             String tenantId, String createdBy) {
+        String safeName = fileName == null || fileName.isBlank() ? "unnamed" : fileName.strip();
         DocumentMetadata meta = new DocumentMetadata();
         meta.setTenantId(tenantId);
-        meta.setTitle(fileName);
-        meta.setFileName(fileName);
+        meta.setTitle(safeName);
+        meta.setFileName(safeName);
         meta.setContentType(contentType);
         meta.setStatus(DocumentStatus.PENDING);
         meta.setChunkCount(0);
         meta.setCreatedBy(createdBy);
         meta = metadataRepository.save(meta);
 
-        if (!isAllowed(fileName)) {
+        if (!isAllowed(safeName)) {
             meta.setStatus(DocumentStatus.FAILED);
-            meta.setErrorMessage("Unsupported format: " + fileName);
+            meta.setErrorMessage("Unsupported format: " + safeName);
             return metadataRepository.save(meta);
         }
 
         String storagePath = null;
         try {
-            storagePath = storageService.store(tenantId, fileName, content);
+            storagePath = storageService.store(tenantId, safeName, content);
             meta.setStoragePath(storagePath);
 
-            Document document = parse(contentType, fileName, storagePath);
+            Document document = parse(contentType, safeName, storagePath);
             DocumentSplitter splitter = DocumentSplitters.recursive(
                     appProperties.getIngestion().getChunkSize(),
                     appProperties.getIngestion().getChunkOverlap());
             List<TextSegment> segments = splitter.split(document);
 
             List<TextSegment> enriched = new ArrayList<>(segments.size());
+            String docId = meta.getId() == null ? "" : meta.getId().toString();
             for (TextSegment seg : segments) {
                 seg.metadata().put("tenantId", tenantId);
-                seg.metadata().put("fileName", fileName);
-                seg.metadata().put("docId", meta.getId().toString());
+                seg.metadata().put("fileName", safeName);
+                seg.metadata().put("docId", docId);
                 enriched.add(seg);
+            }
+            if (enriched.isEmpty()) {
+                meta.setStatus(DocumentStatus.FAILED);
+                meta.setErrorMessage("Document contains no indexable text: " + safeName);
+                metadataRepository.save(meta);
+                storageService.delete(storagePath);
+                return meta;
             }
 
             List<Embedding> embeddings = embeddingProvider.embedAll(enriched);
-            for (int i = 0; i < enriched.size(); i++) {
-                embeddingStore.add(embeddings.get(i), enriched.get(i));
-            }
+            // Batch write: one round-trip instead of N (P0 perf fix, same semantics).
+            embeddingStore.addAll(embeddings, enriched);
 
             meta.setStatus(DocumentStatus.INGESTED);
             meta.setChunkCount(enriched.size());
