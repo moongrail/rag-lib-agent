@@ -71,7 +71,6 @@ class DocumentIngestionServiceEdgeTest {
         when(parserFactory.parserFor(any(), any())).thenReturn(documentParser);
         when(documentParser.parse(any())).thenReturn(Document.document("Reasonably long text content to be chunked and embedded."));
         when(embeddingProvider.embedAll(anyList())).thenReturn(List.of(Embedding.from(new float[]{1f, 2f})));
-        when(embeddingStore.add(any(Embedding.class), any(TextSegment.class))).thenReturn("emb-id");
     }
 
     @Test

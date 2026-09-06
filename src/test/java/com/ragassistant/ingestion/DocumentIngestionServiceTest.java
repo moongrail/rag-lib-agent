@@ -69,7 +69,6 @@ class DocumentIngestionServiceTest {
         when(parserFactory.parserFor(any(), any())).thenReturn(documentParser);
         when(documentParser.parse(any())).thenReturn(Document.document("Some reasonably long text content that will be chunked and embedded for the test."));
         when(embeddingProvider.embedAll(anyList())).thenReturn(List.of(Embedding.from(new float[]{1f, 2f})));
-        when(embeddingStore.add(any(Embedding.class), any(TextSegment.class))).thenReturn("emb-id");
     }
 
     @Test
@@ -82,7 +81,7 @@ class DocumentIngestionServiceTest {
 
         assertThat(result.getStatus()).isEqualTo(DocumentStatus.INGESTED);
         assertThat(result.getChunkCount()).isGreaterThan(0);
-        verify(embeddingStore, atLeastOnce()).add(any(Embedding.class), any(TextSegment.class));
+        verify(embeddingStore, atLeastOnce()).addAll(anyList(), anyList());
         verify(embeddingProvider).embedAll(anyList());
     }
 
