@@ -5,6 +5,7 @@ import com.ragassistant.domain.DocumentMetadata;
 import com.ragassistant.domain.DocumentMetadataRepository;
 import com.ragassistant.domain.DocumentStatus;
 import com.ragassistant.ingestion.DocumentIngestionService;
+import com.ragassistant.storage.DocumentStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -31,11 +32,12 @@ class DocumentControllerTest {
 
     private final DocumentIngestionService ingestionService = mock(DocumentIngestionService.class);
     private final DocumentMetadataRepository metadataRepository = mock(DocumentMetadataRepository.class);
+    private final DocumentStorageService storageService = mock(DocumentStorageService.class);
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        DocumentController controller = new DocumentController(ingestionService, metadataRepository);
+        DocumentController controller = new DocumentController(ingestionService, metadataRepository, storageService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
